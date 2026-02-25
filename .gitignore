@@ -1,3 +1,7 @@
+data/*.csv
+models/misinfo_llm/
+models/results/
+logs/
 .env
 __pycache__/
 .DS_Store
