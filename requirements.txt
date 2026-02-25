@@ -1,2 +1,19 @@
 requests
 python-dotenv
+
+# Machine Learning & LLM
+torch
+transformers
+scikit-learn
+pandas
+numpy
+
+# Web Interface
+streamlit
+
+# API & Utilities
+requests
+urllib3
+
+# Optional but recommended for training progress bars
+tqdm
