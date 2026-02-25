@@ -1,33 +1,46 @@
+import os
 from api_client import FactCheckAPI
+from utils.analyzer import simple_bias_check
 
 def main():
     api = FactCheckAPI()
     print("\n" + "="*45)
-    print("  AI SYSTEMS: MISINFORMATION DETECTOR DEMO")
+    print("  AI SYSTEMS: ADVANCED MISINFO DETECTOR")
     print("="*45)
     
-    claim = input("\nEnter a claim to verify (e.g., 'The moon is cheese'): ")
-    
-    if not claim.strip():
-        print("Empty input. Please try again.")
-        return
+    claim = input("\nEnter a claim to verify: ")
+    if not claim.strip(): return
 
-    print("Checking fact-check databases...")
+    # Phase 1: Local Linguistic Analysis (Innovation Layer)
+    bias_score, triggers = simple_bias_check(claim)
+    
+    # Phase 2: External Fact-Check Search (Data Layer)
+    print("Cross-referencing with global databases...")
     data = api.search_claim(claim)
     
-    if "error" in data:
-        print(f"Error: {data['error']}")
-    elif "claims" in data:
-        print(f"\nFound {len(data['claims'])} matching fact-check(s):")
-        for i, item in enumerate(data['claims'][:3]):  # Limit to top 3 for the demo
-            review = item['claimReview'][0]
-            print(f"\n--- Result {i+1} ---")
-            print(f"Claim: {item['text']}")
-            print(f"Rating: {review['textualRating']}")
-            print(f"Publisher: {review['publisher']['name']}")
-            print(f"Link: {review['url']}")
-    else:
-        print("\nNo results found. This statement hasn't been formally fact-checked yet.")
+    # Phase 3: Decision Logic
+    final_score = bias_score
+    api_found = False
+    rating_text = "N/A"
+
+    if "claims" in data and len(data['claims']) > 0:
+        api_found = True
+        rating_text = data['claims'][0]['claimReview'][0]['textualRating']
+        # If a verified fact-check exists and is negative, drop score to 0-10
+        if any(neg in rating_text.lower() for neg in ['false', 'fake', 'mixture', 'pants on fire']):
+            final_score = 10
+
+    # Display Results
+    print("\n" + "-"*20 + " REPORT " + "-"*20)
+    print(f"Claim: {claim}")
+    print(f"Fact-Check Match: {'FOUND' if api_found else 'NOT FOUND'}")
+    if api_found:
+        print(f"Official Rating: {rating_text}")
+    
+    print(f"\nFINAL RELIABILITY SCORE: {final_score}/100")
+    if triggers:
+        print(f"WARNING: Sensationalist language detected: {', '.join(triggers)}")
+    print("-"*48)
 
 if __name__ == "__main__":
     main()
