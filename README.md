@@ -12,7 +12,7 @@ Most AI models for fake news detection are easily fooled by "Sophisticated Misin
 ## 📊 Model Performance & Rigor
 - **Base Model:** DistilBERT (Fine-tuned locally)
 - **Dataset:** WELFake (72,134 labeled records)
-- **Accuracy:** ~92.4% (Test Set)
+- **Accuracy:** ~98.40% (Test Set)
 - **Hardware Optimization:** Built for local execution on Apple Silicon (MPS/CPU) to ensure data privacy and speed.
 
 ### Addressing High-Confidence Anomalies
@@ -50,4 +50,5 @@ Training Split: 80% Train / 20% Test
 Final Test Accuracy: 98.40%
 
 Hybrid Logic: Includes a Google Fact Check API override to correct "Sophisticated Misinformation."
+
 
