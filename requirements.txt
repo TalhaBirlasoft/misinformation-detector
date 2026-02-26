@@ -1,5 +1,6 @@
 requests
 python-dotenv
+<<<<<<< HEAD
 
 # Machine Learning & LLM
 torch
@@ -17,3 +18,7 @@ urllib3
 
 # Optional but recommended for training progress bars
 tqdm
+=======
+streamlit
+streamlit
+>>>>>>> 1fb6d99 (Final Build: Integrated Hybrid Logic with Detailed Fact-Check Explanations)
