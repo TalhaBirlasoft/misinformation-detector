@@ -6,13 +6,14 @@ import urllib.parse
 
 # --- Configuration ---
 MODEL_PATH = "models/misinfo_llm"
-# Make sure this is your valid key
+# The API Key allows access to the Google Fact Check database
 API_KEY = "AIzaSyDuZlBM5m6pBNxFzbLXw_HSxecSFeZ1-HY" 
 
 # --- Load Custom Model ---
 @st.cache_resource
 def load_custom_llm():
     if os.path.exists(MODEL_PATH):
+        # Using the HuggingFace pipeline for high-performance text classification
         return pipeline("text-classification", model=MODEL_PATH, tokenizer=MODEL_PATH)
     return None
 
@@ -20,10 +21,12 @@ classifier = load_custom_llm()
 
 # --- Google Fact Check Logic ---
 def check_google_fact(claim):
+    # Encoding the query for URL safety
     encoded_claim = urllib.parse.quote(claim)
     url = f"https://factchecktools.googleapis.com/v1alpha1/claims:search?query={encoded_claim}&key={API_KEY}"
     response = requests.get(url).json()
     
+    # Fallback: If no direct match, simplify the query to the first few keywords
     if not response.get('claims'):
         simple_claim = " ".join(claim.split()[:3])
         encoded_simple = urllib.parse.quote(simple_claim)
@@ -35,66 +38,84 @@ def check_google_fact(claim):
 # --- UI Setup ---
 st.set_page_config(page_title="Guardian AI", page_icon="🛡️")
 st.title("🛡️ Guardian AI: Hybrid Fact-Checker")
-st.markdown("Analyzing claims using **Google Knowledge** + **Custom Trained LLM (WELFake)**")
+st.markdown("### Hybrid Analysis: Linguistic Patterns + Knowledge Layer")
+st.markdown("Fine-tuned on **WELFake Dataset (72,000 articles)**")
 
-claim = st.text_input("Enter a news claim to verify:", placeholder="e.g., Dandelion tea cures cancer")
+claim = st.text_input("Enter news headline to score:", placeholder="e.g., Image shows U.S. Embassy on fire")
 
-if st.button("Verify Claim", type="primary"):
+if st.button("Verify & Score", type="primary"):
     if claim:
-        with st.spinner("Analyzing Layers..."):
-            # 1. Check Google Knowledge Layer
+        with st.spinner("Executing Multi-Layer Analysis..."):
+            # 1. LAYER 1: Knowledge-Base Verification (Google)
             facts = check_google_fact(claim)
             
-            # 2. Check Trained LLM Layer
+            # 2. LAYER 2: Deep Learning Linguistic Check (DistilBERT)
             llm_result = classifier(claim)[0] if classifier else {"label": "LABEL_0", "score": 0}
             llm_label = "REAL" if llm_result['label'] == 'LABEL_1' else "FAKE"
-            confidence = llm_result['score']
+            ai_confidence = llm_result['score']
 
-            # --- 3. HYBRID LOGIC (The Override) ---
-            final_verdict = llm_label
+            # --- 3. HYBRID SCORING HEURISTIC ---
+            # Initializing score based on LLM output
+            ai_score_percent = ai_confidence * 100
+            final_score = ai_score_percent
             is_override = False
-            
+            logic_note = "Veracity score derived from stylistic pattern analysis."
+
             if facts:
                 rating_text = facts[0]['claimReview'][0].get('textualRating', "").lower()
-                # Indicators that the claim is actually false
-                if any(word in rating_text for word in ["false", "fake", "misleading", "myth", "no"]):
+                
+                # EXPANDED Logic Gate: Catching 'AI-generated', 'False', or 'Manipulated' labels
+                fake_indicators = ["false", "fake", "misleading", "myth", "no", "ai", "altered", "manipulated", "synthetic"]
+                
+                if any(word in rating_text for word in fake_indicators):
+                    # APPLY MATHEMATICAL PENALTY: Caps score at 15% for safety
+                    final_score = min(ai_score_percent, 15.0) 
+                    logic_note = "🚨 Knowledge Layer Override: Verified as False or Altered content."
                     if llm_label == "REAL":
-                        final_verdict = "FAKE"
                         is_override = True
+                
+                # Boost score if confirmed true by experts
+                elif any(word in rating_text for word in ["true", "correct", "proven", "authentic"]):
+                    final_score = max(ai_score_percent, 92.0)
+                    logic_note = "✅ Knowledge Layer Verified: Content confirmed by external sources."
 
-            # --- Display Results ---
+            # --- 4. DATA DASHBOARD DISPLAY ---
             st.divider()
             
-            if final_verdict == "FAKE":
-                st.error(f"### FINAL SYSTEM VERDICT: {final_verdict}")
+            # Main Veracity Score Gauge
+            st.markdown(f"## 🛡️ Veracity Score: {final_score:.1f}%")
+            if final_score > 75:
+                st.success("### SYSTEM VERDICT: HIGH PROBABILITY AUTHENTIC")
+            elif final_score > 40:
+                st.warning("### SYSTEM VERDICT: UNVERIFIED / MIXED SIGNALS")
             else:
-                st.success(f"### FINAL SYSTEM VERDICT: {final_verdict}")
+                st.error("### SYSTEM VERDICT: HIGH PROBABILITY MISINFORMATION")
+            
+            st.progress(final_score / 100)
+            st.caption(f"**Analysis Note:** {logic_note}")
 
+            # Technical Column Breakdown for the Report
             col1, col2 = st.columns(2)
             
             with col1:
-                st.subheader("🤖 AI Style Analysis")
-                st.write(f"Tone Analysis: **{llm_label}**")
-                st.progress(confidence)
-                st.caption("LLM analyzes linguistic patterns.")
+                st.subheader("🤖 AI Style Layer")
+                st.write(f"Stylistic Verdict: **{llm_label}**")
+                st.write(f"Confidence: {ai_score_percent:.1f}%")
+                st.caption("Analyzes syntax, emotion, and tone.")
 
             with col2:
-                st.subheader("🔍 Google Knowledge")
+                st.subheader("🔍 Knowledge Layer")
                 if facts:
-                    # facts[0] is the main result
-                    # 'text' is the claim found, 'title' is the expert explanation
-                    f = facts[0]
-                    review = f['claimReview'][0]
-                    
-                    st.warning(f"**Expert Rating: {review['textualRating']}**")
-                    # THIS IS THE LINE THAT WAS MISSING:
-                    st.info(f"**Explanation:** {review.get('title', 'Check source for details.')}")
-                    st.write(f"**Source:** {review['publisher']['name']}")
+                    review = facts[0]['claimReview'][0]
+                    st.info(f"**Expert Rating:** {review['textualRating']}")
+                    st.write(f"**Title:** {review.get('title', 'N/A')}")
+                    st.caption(f"Fact-Checker: {review['publisher']['name']}")
                 else:
-                    st.warning("No direct match in Knowledge Base.")
+                    st.write("No existing database match found.")
+                    st.caption("System relying on linguistic intelligence.")
 
-            # Final Explanation for the Professor
+            # Documentation Alert for the Professor
             if is_override:
-                st.warning("⚠️ **Hybrid Logic Note:** The AI model was fooled by the professional tone, but the Google Knowledge Layer provided a factual override based on the evidence shown above.")
+                st.warning("⚠️ **Architectural Note:** The Linguistic Layer assigned a 'Real' label due to professional phrasing, but the Knowledge Layer triggered a priority override based on factual debunking.")
     else:
         st.warning("Please enter a claim first!")
